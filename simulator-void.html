@@ -1,0 +1,1621 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Симулятор — Otter Robotics</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Nunito', sans-serif;
+  background: #1a1a2e;
+  color: #e2e8f0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ── HEADER ── */
+#header {
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 6px;
+  flex-shrink: 0;
+  z-index: 20;
+}
+
+.logo-area {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-right: 10px;
+}
+.logo-mark-box {
+  width: 38px;
+  height: 38px;
+  border-radius: 11px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+.logo-text { font-size: 18px; font-weight: 900; color: #1e293b; white-space: nowrap; }
+
+.h-sep { width: 1px; height: 28px; background: #1e3a5f; margin: 0 4px; flex-shrink: 0; }
+
+.tool-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 15px;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  position: relative;
+}
+.tool-btn:hover { background: #1e3a5f; color: #e2e8f0; }
+.tool-btn.active { background: #1e3a8f; color: #3A86FF; }
+.tool-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  top: 38px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #0f172a;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-family: 'Nunito', sans-serif;
+  padding: 3px 8px;
+  border-radius: 4px;
+  white-space: nowrap;
+  border: 1px solid #334155;
+  z-index: 100;
+}
+
+.spacer { flex: 1; }
+
+.action-btn {
+  height: 34px;
+  padding: 0 14px;
+  border: none;
+  border-radius: 8px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+#btn-code {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+#btn-code:hover { background: #e2e8f0; color: #1e293b; }
+#btn-code.open { background: #dbeafe; color: #3A86FF; border-color: #93c5fd; }
+
+#btn-sim {
+  background: linear-gradient(135deg, #22c55e, #16a34a);
+  color: #fff;
+  box-shadow: 0 2px 8px #22c55e44;
+}
+#btn-sim:hover { background: linear-gradient(135deg, #16a34a, #15803d); }
+#btn-sim.running {
+  background: linear-gradient(135deg, #ef4444, #dc2626);
+  box-shadow: 0 2px 8px #ef444444;
+}
+
+/* ── MAIN ── */
+#main { flex: 1; display: flex; overflow: hidden; position: relative; }
+
+/* ── WORKSPACE ── */
+#workspace {
+  flex: 1;
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+  cursor: default;
+}
+
+#svg-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
+/* Component interaction */
+.component-body { cursor: move; }
+.component-body:hover { filter: brightness(1.05); }
+
+.pin-dot {
+  cursor: crosshair;
+  transition: r 0.1s;
+}
+.pin-dot:hover { filter: brightness(1.2); }
+.pin-dot.wiring-start {
+  stroke: #f59e0b !important;
+  stroke-width: 2.5 !important;
+  filter: drop-shadow(0 0 3px #f59e0b);
+}
+.pin-dot.connected {
+  stroke: #22c55e !important;
+  stroke-width: 1.5 !important;
+}
+
+/* Wires */
+.wire-path {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-width: 2.5;
+  cursor: pointer;
+}
+.wire-path:hover { stroke-width: 4; opacity: 0.8; }
+
+#wire-preview-path {
+  fill: none;
+  stroke: #ef4444;
+  stroke-width: 2;
+  stroke-dasharray: 8 5;
+  stroke-linecap: square;
+  pointer-events: none;
+}
+
+/* Sim overlay */
+#sim-badge {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background: #22c55e;
+  color: white;
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 700;
+  display: none;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px #22c55e55;
+  z-index: 5;
+}
+#sim-badge.visible { display: flex; }
+.pulse-dot {
+  width: 7px;
+  height: 7px;
+  background: white;
+  border-radius: 50%;
+  animation: pulse-anim 1.2s infinite;
+}
+@keyframes pulse-anim { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
+
+/* Wire mode cursor */
+#workspace.wire-mode { cursor: crosshair; }
+
+/* ── RIGHT PANEL ── */
+#panel {
+  width: 210px;
+  background: #16213e;
+  border-left: 1px solid #1e3a5f;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+  z-index: 10;
+}
+
+#panel-header {
+  padding: 10px 12px 8px;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1.2px;
+  color: #475569;
+  border-bottom: 1px solid #1e3a5f;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.filter-select {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  color: #64748b;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Nunito', sans-serif;
+  outline: none;
+  cursor: pointer;
+}
+
+#panel-search {
+  padding: 8px;
+  border-bottom: 1px solid #1e3a5f;
+}
+#search-input {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 6px;
+  color: #e2e8f0;
+  padding: 6px 10px;
+  font-size: 12px;
+  font-family: 'Nunito', sans-serif;
+  outline: none;
+  transition: border-color 0.15s;
+}
+#search-input:focus { border-color: #3A86FF; }
+#search-input::placeholder { color: #334155; }
+
+#comp-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 6px;
+}
+
+.comp-cat {
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #334155;
+  padding: 8px 6px 4px;
+}
+
+.comp-card {
+  background: #0f172a;
+  border: 1px solid #1e3a5f;
+  border-radius: 8px;
+  padding: 8px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: grab;
+  transition: all 0.15s;
+  margin-bottom: 4px;
+}
+.comp-card:hover:not(.locked) {
+  background: #1e3a5f;
+  border-color: #3A86FF55;
+  transform: translateX(-2px);
+}
+.comp-card:active:not(.locked) { cursor: grabbing; transform: scale(0.98); }
+.comp-card.locked { opacity: 0.35; cursor: not-allowed; }
+
+.comp-icon-wrap {
+  width: 38px;
+  height: 38px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+.comp-card-name { font-size: 12px; font-weight: 700; color: #e2e8f0; }
+.comp-card-sub { font-size: 10px; color: #475569; margin-top: 1px; }
+
+/* ── CODE PANEL ── */
+#code-panel {
+  position: fixed;
+  left: 0;
+  top: 56px;
+  width: 400px;
+  height: calc(100vh - 56px);
+  background: #0d1117;
+  border-right: 1px solid #21262d;
+  display: flex;
+  flex-direction: column;
+  transform: translateX(-100%);
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  z-index: 30;
+  box-shadow: 4px 0 20px #00000055;
+}
+#code-panel.open { transform: translateX(0); }
+
+#code-topbar {
+  background: #161b22;
+  border-bottom: 1px solid #21262d;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  padding: 0 14px;
+  justify-content: space-between;
+  flex-shrink: 0;
+}
+#code-topbar h3 { font-size: 13px; font-weight: 700; color: #e6edf3; display: flex; align-items: center; gap: 6px; }
+
+.close-btn {
+  background: transparent;
+  border: none;
+  color: #484f58;
+  cursor: pointer;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.close-btn:hover { background: #21262d; color: #e6edf3; }
+
+/* Line numbers + editor */
+#editor-wrap {
+  flex: 1;
+  display: flex;
+  overflow: hidden;
+}
+
+#line-numbers {
+  background: #0d1117;
+  color: #484f58;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  padding: 14px 8px 14px 12px;
+  text-align: right;
+  min-width: 36px;
+  overflow: hidden;
+  pointer-events: none;
+  border-right: 1px solid #21262d;
+  user-select: none;
+}
+
+#code-editor {
+  flex: 1;
+  background: #0d1117;
+  color: #e6edf3;
+  font-family: 'Fira Code', monospace;
+  font-size: 12px;
+  line-height: 1.65;
+  padding: 14px 14px;
+  border: none;
+  outline: none;
+  resize: none;
+  tab-size: 2;
+  white-space: pre;
+  overflow-x: auto;
+  overflow-y: auto;
+}
+
+#code-footer {
+  background: #161b22;
+  padding: 8px 12px;
+  display: flex;
+  gap: 6px;
+  border-top: 1px solid #21262d;
+  flex-shrink: 0;
+}
+
+.cf-btn {
+  flex: 1;
+  padding: 7px;
+  border: none;
+  border-radius: 6px;
+  font-family: 'Nunito', sans-serif;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+/* Serial monitor */
+#serial-wrap {
+  background: #010409;
+  border-top: 1px solid #21262d;
+  height: 0;
+  overflow: hidden;
+  transition: height 0.3s;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+#serial-wrap.open { height: 150px; }
+#serial-bar { background: #161b22; padding: 5px 12px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #484f58; border-bottom: 1px solid #21262d; flex-shrink: 0; }
+#serial-out { flex: 1; overflow-y: auto; padding: 6px 12px; font-family: 'Fira Code', monospace; font-size: 11px; color: #3fb950; line-height: 1.6; }
+
+/* Tooltip */
+#tooltip {
+  position: fixed;
+  background: #1e293b;
+  color: #e2e8f0;
+  font-size: 11px;
+  font-weight: 600;
+  font-family: 'Nunito', sans-serif;
+  padding: 4px 8px;
+  border-radius: 5px;
+  pointer-events: none;
+  z-index: 999;
+  white-space: nowrap;
+  border: 1px solid #334155;
+  display: none;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #475569; }
+</style>
+</head>
+<body>
+
+<div id="tooltip"></div>
+
+<!-- ── HEADER ── -->
+<div id="header">
+  <div class="logo-area">
+    <div class="logo-mark-box">
+      <img src="otter_logo.png" width="38" height="38" style="object-fit:cover;border-radius:11px;display:block;"/>
+    </div>
+    <span class="logo-text">Otter Robotics</span>
+  </div>
+
+  <div class="spacer"></div>
+
+  <button class="action-btn" id="btn-code">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none">
+      <path d="M3.5 3.5L1 6.5l2.5 3M9.5 3.5L12 6.5l-2.5 3M7.5 1.5l-2 10" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/>
+    </svg>
+    Код
+  </button>
+  <button class="action-btn" id="btn-sim">
+    <svg width="13" height="13" viewBox="0 0 13 13" fill="none" id="sim-svg-icon">
+      <polygon points="2.5,1.5 10.5,6.5 2.5,11.5" fill="currentColor"/>
+    </svg>
+    <span id="sim-label">Запустить</span>
+  </button>
+</div>
+
+<!-- ── MAIN ── -->
+<div id="main">
+
+  <!-- Workspace -->
+  <div id="workspace">
+    <svg id="svg-canvas" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="dot-grid" width="24" height="24" patternUnits="userSpaceOnUse">
+          <circle cx="12" cy="12" r="0.7" fill="#94a3b8" opacity="0.55"/>
+        </pattern>
+        <filter id="glow-green">
+          <feGaussianBlur stdDeviation="2" result="blur"/>
+          <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+        </filter>
+        <filter id="shadow-sm">
+          <feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#00000030"/>
+        </filter>
+      </defs>
+
+      <!-- Grid -->
+      <rect width="100%" height="100%" fill="url(#dot-grid)"/>
+
+      <!-- Layers -->
+      <g id="view-group">
+        <g id="components-layer"></g>
+        <g id="wires-layer"></g>
+        <g id="handles-layer"></g>
+        <path id="wire-preview-path" d="" style="display:none"/>
+      </g>
+    </svg>
+
+    <!-- Running badge -->
+    <div id="sim-badge">
+      <div class="pulse-dot"></div>
+      Симуляция запущена
+    </div>
+  </div>
+
+  <!-- Right panel -->
+  <div id="panel">
+    <div id="panel-header">
+      <span>Компоненты</span>
+    </div>
+    <div id="comp-list">
+      <div class="comp-card" id="drag-arduino-mega" draggable="false" data-comp="arduino-mega">
+        <div class="comp-icon-wrap" style="overflow:hidden;padding:0;">
+          <img src="arduino-sim1.png" width="38" height="38" style="object-fit:cover;border-radius:6px;display:block;"/>
+        </div>
+        <div>
+          <div class="comp-card-name">Arduino Mega</div>
+          <div class="comp-card-sub">ATmega2560 · 54 pins</div>
+        </div>
+      </div>
+
+      <div class="comp-card" id="drag-breadboard" draggable="false" data-comp="breadboard-small">
+        <div class="comp-icon-wrap" style="overflow:hidden;padding:0;">
+          <img src="breadboard.png" width="38" height="38" style="object-fit:cover;border-radius:6px;display:block;"/>
+        </div>
+        <div>
+          <div class="comp-card-name">Breadboard Small</div>
+          <div class="comp-card-sub">30 строк · 400 точек</div>
+        </div>
+      </div>
+
+      <!-- Locked future components -->
+      <div class="comp-card locked" data-comp="led">
+        <div class="comp-icon-wrap" style="background:#1e0a0a;">
+          <svg width="24" height="32" viewBox="0 0 24 32">
+            <path d="M12 4 Q18 8 18 14 Q18 20 12 22 Q6 20 6 14 Q6 8 12 4Z" fill="#555"/>
+            <line x1="10" y1="22" x2="10" y2="30" stroke="#888" stroke-width="2"/>
+            <line x1="14" y1="22" x2="14" y2="28" stroke="#888" stroke-width="2"/>
+          </svg>
+        </div>
+        <div>
+          <div class="comp-card-name">LED 🔒</div>
+          <div class="comp-card-sub">Открыт с урока 2</div>
+        </div>
+      </div>
+      <div class="comp-card locked" data-comp="resistor">
+        <div class="comp-icon-wrap" style="background:#1a1005;">
+          <svg width="32" height="16" viewBox="0 0 32 16">
+            <rect x="7" y="5" width="18" height="6" rx="1.5" fill="#555"/>
+            <line x1="1" y1="8" x2="7" y2="8" stroke="#888" stroke-width="2"/>
+            <line x1="25" y1="8" x2="31" y2="8" stroke="#888" stroke-width="2"/>
+            <rect x="10" y="5" width="2" height="6" fill="#e44"/>
+            <rect x="14" y="5" width="2" height="6" fill="#333"/>
+            <rect x="18" y="5" width="2" height="6" fill="#e44"/>
+          </svg>
+        </div>
+        <div>
+          <div class="comp-card-name">Резистор 🔒</div>
+          <div class="comp-card-sub">Открыт с урока 2</div>
+        </div>
+      </div>
+      <div class="comp-card locked" data-comp="button">
+        <div class="comp-icon-wrap" style="background:#0a0a1e;">
+          <svg width="28" height="28" viewBox="0 0 28 28">
+            <rect x="4" y="4" width="20" height="20" rx="3" fill="#333"/>
+            <circle cx="14" cy="14" r="6" fill="#222"/>
+            <circle cx="14" cy="14" r="4" fill="#1a1a1a"/>
+            <circle cx="5" cy="5" r="1.5" fill="#777"/>
+            <circle cx="23" cy="5" r="1.5" fill="#777"/>
+            <circle cx="5" cy="23" r="1.5" fill="#777"/>
+            <circle cx="23" cy="23" r="1.5" fill="#777"/>
+          </svg>
+        </div>
+        <div>
+          <div class="comp-card-name">Кнопка 🔒</div>
+          <div class="comp-card-sub">Открыт с урока 3</div>
+        </div>
+      </div>
+      <div class="comp-card locked" data-comp="servo">
+        <div class="comp-icon-wrap" style="background:#0a0a1e;">
+          <svg width="32" height="24" viewBox="0 0 32 24">
+            <rect x="2" y="4" width="28" height="16" rx="2" fill="#444"/>
+            <circle cx="16" cy="12" r="5" fill="#222"/>
+            <circle cx="16" cy="12" r="2" fill="#666"/>
+            <line x1="16" y1="12" x2="21" y2="8" stroke="#888" stroke-width="1.5" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="comp-card-name">Сервомотор 🔒</div>
+          <div class="comp-card-sub">Открыт с урока 6</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ── CODE PANEL ── -->
+<div id="code-panel">
+  <div id="code-topbar">
+    <h3>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M3.5 3.5L1 6.5l2.5 3M9.5 3.5L12 6.5l-2.5 3M7.5 1.5l-2 10" stroke="#3fb950" stroke-width="1.4" stroke-linecap="round"/>
+      </svg>
+      Редактор кода
+    </h3>
+    <button class="close-btn" id="btn-close-code">✕</button>
+  </div>
+  <div id="editor-wrap">
+    <div id="line-numbers"></div>
+    <textarea id="code-editor" spellcheck="false">// Otter Robotics — Arduino Mega
+// Урок 1: Знакомство с Arduino
+
+void setup() {
+  // Настройка пина 13 как выход
+  pinMode(13, OUTPUT);
+}
+
+void loop() {
+  // Включаем LED
+  digitalWrite(13, HIGH);
+  delay(1000);
+
+  // Выключаем LED
+  digitalWrite(13, LOW);
+  delay(1000);
+}
+</textarea>
+  </div>
+  <div id="serial-wrap">
+    <div id="serial-out"></div>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ═══════════════════════════════════════════════
+//  OTTER ROBOTICS SIMULATOR ENGINE
+// ═══════════════════════════════════════════════
+
+const svgEl = document.getElementById('svg-canvas');
+const viewGroup = document.getElementById('view-group');
+const wiresLayer = document.getElementById('wires-layer');
+const compsLayer = document.getElementById('components-layer');
+const handlesLayer = document.getElementById('handles-layer');
+const wirePreview = document.getElementById('wire-preview-path');
+
+// State
+let placed = [];         // { id, type, x, y, el, rotation }
+let wires = [];          // { id, c1, pin1, x1, y1, c2, pin2, x2, y2, color, el }
+let uid = 1;
+let simRunning = false;
+let codeOpen = false;
+let serialOpen = false;
+let selectedComp = null; // id of selected comp
+let wireStart = null;      // { compId, pinId, absX, absY, el }
+let wireWaypoints = [];   // [{x, y}, ...] intermediate click points while drawing
+let selectedWireId = null; // id of wire being edited
+let draggingHandle = null; // { wire, wpIdx, el }
+let isDragging = false;
+let dragTarget = null;
+let dragOX = 0, dragOY = 0;
+let zoom = 1;
+let panX = 0, panY = 0;
+let isPanning = false, panStartX = 0, panStartY = 0, panStartPanX = 0, panStartPanY = 0;
+let simTimer = null;
+
+const WIRE_PALETTE = [
+  '#ef4444','#f97316','#eab308','#22c55e',
+  '#3b82f6','#8b5cf6','#ec4899','#14b8a6','#f59e0b'
+];
+let wireColorIdx = 0;
+
+// ═══════════════════════════════════════════════
+//  COMPONENT DEFINITIONS
+// ═══════════════════════════════════════════════
+
+function makePinId(compId, pinId) { return `${compId}::${pinId}`; }
+
+// ── Arduino UNO (image-based, pin positions auto-detected from arduino-sim.png 1524×1234 → 480×389)
+function arduinoMegaPins() {
+  const pins = [];
+
+  // TOP header — pixel-accurate centers from image analysis (ly=23)
+  const topDefs = [
+    {id:'SDA',  label:'SDA',   lx:138, type:'other'},
+    {id:'SCL',  label:'SCL',   lx:155, type:'other'},
+    {id:'AREF', label:'AREF',  lx:174, type:'other'},
+    {id:'TGND', label:'GND',   lx:192, type:'gnd'},
+    {id:'D13',  label:'~13',   lx:210, type:'digital'},
+    {id:'D12',  label:'12',    lx:228, type:'digital'},
+    {id:'D11',  label:'~11',   lx:247, type:'digital'},
+    {id:'D10',  label:'~10',   lx:265, type:'digital'},
+    {id:'D9',   label:'~9',    lx:283, type:'digital'},
+    {id:'D8',   label:'8',     lx:301, type:'digital'},
+    {id:'D7',   label:'7',     lx:331, type:'digital'},
+    {id:'D6',   label:'~6',    lx:349, type:'digital'},
+    {id:'D5',   label:'~5',    lx:367, type:'digital'},
+    {id:'D4',   label:'4',     lx:385, type:'digital'},
+    {id:'D3',   label:'~3',    lx:403, type:'digital'},
+    {id:'D2',   label:'2',     lx:421, type:'digital'},
+    {id:'D1',   label:'TX→1',  lx:440, type:'serial'},
+    {id:'D0',   label:'RX←0',  lx:458, type:'serial'},
+  ];
+  topDefs.forEach(p => pins.push({...p, ly:23}));
+
+  // BOTTOM header — pixel-accurate centers (ly=369)
+  const powerDefs = [
+    {id:'IOREF', label:'IOREF', lx:223, type:'other'},
+    {id:'RST',   label:'RST',   lx:240, type:'other'},
+    {id:'P3V3',  label:'3.3V',  lx:258, type:'pwr33'},
+    {id:'P5V',   label:'5V',    lx:276, type:'pwr5'},
+    {id:'GND1',  label:'GND',   lx:294, type:'gnd'},
+    {id:'GND2',  label:'GND',   lx:312, type:'gnd'},
+    {id:'VIN',   label:'Vin',   lx:331, type:'vin'},
+  ];
+  const analogDefs = [
+    {id:'A0', label:'A0', lx:367, type:'analog'},
+    {id:'A1', label:'A1', lx:383, type:'analog'},
+    {id:'A2', label:'A2', lx:402, type:'analog'},
+    {id:'A3', label:'A3', lx:420, type:'analog'},
+    {id:'A4', label:'A4', lx:438, type:'analog'},
+    {id:'A5', label:'A5', lx:456, type:'analog'},
+  ];
+  [...powerDefs, ...analogDefs].forEach(p => pins.push({...p, ly:369}));
+
+  return pins;
+}
+
+function arduinoMegaSVG(cid) {
+  const W = 480, H = 389;
+  const topX  = [131,148,167,185,203,221,240,258,276,294,324,342,360,378,396,414,433,451];
+  const botPwr = [196,213,231,249,267,285,304];
+  const botAna = [360,376,395,413,431,449];
+  return `
+    <image href="arduino-sim1.png" x="0" y="0" width="${W}" height="${H}" preserveAspectRatio="none"/>
+    <!-- LED "L" — pin 13 built-in LED (orange, near L label on board) -->
+    <circle cx="204" cy="93" r="9"  fill="#ffaa00" id="${cid}-led-l-glow" opacity="0" style="transition:opacity 0.2s;filter:blur(6px)"/>
+    <circle cx="204" cy="93" r="5"  fill="#ffcc00" id="${cid}-led-l"      opacity="0" style="transition:opacity 0.2s"/>
+    <!-- TX / RX LEDs -->
+    <circle cx="133" cy="220" r="4" fill="#ef4444" id="${cid}-led-tx" opacity="0" style="transition:opacity 0.15s;filter:blur(1px)"/>
+    <circle cx="133" cy="238" r="4" fill="#f97316" id="${cid}-led-rx" opacity="0" style="transition:opacity 0.15s;filter:blur(1px)"/>
+    <!-- ON LED (green, power indicator) -->
+    <circle cx="444" cy="200" r="4" fill="#22c55e" id="${cid}-led-on" opacity="0" style="transition:opacity 0.15s;filter:blur(1px)"/>
+  `;
+}
+
+// ── Breadboard (image-based, pixel-accurate holes from breadboard.png 1794×1142 → 480×306)
+// Physical layout: 30 columns × 10 main rows (j–f top, e–a bottom) + 4 power rails
+// Connectivity: pins in the same column+section are tied (e.g. a1–e1 connected, f1–j1 connected)
+function breadboardPins() {
+  const pins = [];
+  // Column X positions (30 cols, spacing=14px, first col at x=40)
+  const colX = Array.from({length:30}, (_,i) => 40 + i*14);
+
+  // Top power rails
+  colX.forEach((x, i) => {
+    pins.push({id:`pmt${i+1}`, label:`−`,  lx:x, ly:21,  type:'gnd'});
+    pins.push({id:`ppt${i+1}`, label:`+`,  lx:x, ly:35,  type:'pwr5'});
+  });
+
+  // Top main section — rows j, i, h, g, f
+  const topRows = [{r:'j',ly:76},{r:'i',ly:90},{r:'h',ly:104},{r:'g',ly:118},{r:'f',ly:132}];
+  topRows.forEach(({r, ly}) => {
+    colX.forEach((x, i) => {
+      pins.push({id:`${r}${i+1}`, label:`${r}${i+1}`, lx:x, ly, type:'bb'});
+    });
+  });
+
+  // Bottom main section — rows e, d, c, b, a
+  const botRows = [{r:'e',ly:174},{r:'d',ly:188},{r:'c',ly:201},{r:'b',ly:215},{r:'a',ly:229}];
+  botRows.forEach(({r, ly}) => {
+    colX.forEach((x, i) => {
+      pins.push({id:`${r}${i+1}`, label:`${r}${i+1}`, lx:x, ly, type:'bb'});
+    });
+  });
+
+  // Bottom power rails
+  colX.forEach((x, i) => {
+    pins.push({id:`pmb${i+1}`, label:`−`,  lx:x, ly:271, type:'gnd'});
+    pins.push({id:`ppb${i+1}`, label:`+`,  lx:x, ly:286, type:'pwr5'});
+  });
+
+  return pins;
+}
+
+function breadboardSVG(cid) {
+  return `<image href="breadboard.png" x="0" y="0" width="480" height="306" preserveAspectRatio="none"/>`;
+}
+
+// Registry
+const COMP_DEFS = {
+  'arduino-mega': {
+    name: 'Arduino',
+    width: 480, height: 389,
+    svgFn: arduinoMegaSVG,
+    pinsFn: arduinoMegaPins,
+  },
+  'breadboard-small': {
+    name: 'Breadboard',
+    width: 480, height: 306,
+    svgFn: breadboardSVG,
+    pinsFn: breadboardPins,
+  }
+};
+
+// ═══════════════════════════════════════════════
+//  PLACE COMPONENT
+// ═══════════════════════════════════════════════
+
+function placeComponent(type, cx, cy) {
+  const def = COMP_DEFS[type];
+  if (!def) return null;
+
+  const id = `C${uid++}`;
+  const pins = def.pinsFn();
+
+  const g = document.createElementNS('http://www.w3.org/2000/svg','g');
+  g.setAttribute('id', id);
+  g.setAttribute('class', 'comp-group');
+  g.setAttribute('transform', `translate(${cx.toFixed(1)},${cy.toFixed(1)})`);
+  g.setAttribute('data-type', type);
+
+  // Body SVG
+  const body = document.createElementNS('http://www.w3.org/2000/svg','g');
+  body.setAttribute('class','component-body');
+  body.innerHTML = def.svgFn(id);
+  g.appendChild(body);
+
+  // Pin layer
+  const pinLayer = document.createElementNS('http://www.w3.org/2000/svg','g');
+  pinLayer.setAttribute('class','pin-layer');
+  pins.forEach(pin => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('class','pin-dot');
+    c.setAttribute('cx', pin.lx);
+    c.setAttribute('cy', pin.ly);
+    const pinR = (def.width === 480 && def.height === 306) ? '4' : '5';
+    c.setAttribute('r', pinR);
+    c.setAttribute('fill', pinColor(pin.type));
+    c.setAttribute('stroke', '#00000055');
+    c.setAttribute('stroke-width','1');
+    c.setAttribute('opacity','0');
+    c.setAttribute('data-comp', id);
+    c.setAttribute('data-pin', pin.id);
+    c.setAttribute('data-lx', pin.lx);
+    c.setAttribute('data-ly', pin.ly);
+    c.setAttribute('data-label', pin.label);
+    c.setAttribute('data-ptype', pin.type);
+
+    c.addEventListener('mouseenter', (e) => {
+      c.setAttribute('opacity','1');
+      c.setAttribute('r', String(parseInt(pinR)+1));
+      c.setAttribute('fill','#ef4444');
+      if (type === 'breadboard-small') bbHighlightGroup(id, pin.id, '0.7');
+      showTooltip(e, `${pin.label}  [${pin.type}]`);
+    });
+    c.addEventListener('mouseleave', () => {
+      c.setAttribute('fill', pinColor(pin.type));
+      if (!c.classList.contains('connected') && !c.classList.contains('wiring-start')) {
+        c.setAttribute('opacity','0');
+      } else {
+        c.setAttribute('opacity','0.85');
+      }
+      c.setAttribute('r', pinR);
+      if (type === 'breadboard-small') bbHighlightGroup(id, pin.id, '0');
+      hideTooltip();
+    });
+    c.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      handlePinDown(id, pin.id, c);
+    });
+    pinLayer.appendChild(c);
+  });
+  g.appendChild(pinLayer);
+
+  // Pins stay hidden on component hover — only reveal on direct pin hover
+
+  // Body drag
+  body.addEventListener('mousedown', (e) => {
+    if (e.target.classList.contains('pin-dot')) return;
+    e.preventDefault();
+    e.stopPropagation();
+    startDrag(id, e);
+  });
+
+  compsLayer.appendChild(g);
+
+  const comp = { id, type, x: cx, y: cy, el: g, pins };
+  placed.push(comp);
+  return comp;
+}
+
+// ── Breadboard connectivity ──
+// Returns a group key: all pins with the same key are electrically connected
+function bbGroupKey(compId, pinId) {
+  // Power rails: all + on top = one net, all - on top = one net, etc.
+  if (/^ppt\d+$/.test(pinId)) return `${compId}::rail_plus_top`;
+  if (/^pmt\d+$/.test(pinId)) return `${compId}::rail_minus_top`;
+  if (/^ppb\d+$/.test(pinId)) return `${compId}::rail_plus_bot`;
+  if (/^pmb\d+$/.test(pinId)) return `${compId}::rail_minus_bot`;
+  // Main holes: group = section (a-e or f-j) + column number
+  const m = pinId.match(/^([a-j])(\d+)$/);
+  if (m) {
+    const row = m[1], col = m[2];
+    const section = 'abcde'.includes(row) ? 'bot' : 'top';
+    return `${compId}::col_${section}_${col}`;
+  }
+  return null;
+}
+
+// Highlight all pins in the same breadboard group
+function bbHighlightGroup(compId, pinId, opacity) {
+  const key = bbGroupKey(compId, pinId);
+  if (!key) return;
+  const comp = placed.find(c => c.id === compId);
+  if (!comp) return;
+  const compEl = comp.el;
+  compEl.querySelectorAll('.pin-dot').forEach(dot => {
+    const gk = bbGroupKey(dot.dataset.comp, dot.dataset.pin);
+    if (gk === key && !dot.classList.contains('wiring-start')) {
+      dot.setAttribute('opacity', opacity);
+    }
+  });
+}
+
+function pinColor(type) {
+  switch(type) {
+    case 'gnd': return '#64748b';
+    case 'pwr5': return '#ef4444';
+    case 'pwr33': return '#f97316';
+    case 'vin': return '#eab308';
+    case 'analog': return '#3b82f6';
+    case 'digital': return '#22c55e';
+    case 'serial': return '#8b5cf6';
+    case 'bb': return '#94a3b8';
+    default: return '#94a3b8';
+  }
+}
+
+// ═══════════════════════════════════════════════
+//  DRAGGING
+// ═══════════════════════════════════════════════
+
+function screenToWorld(sx, sy) {
+  return { x: (sx - panX) / zoom, y: (sy - panY) / zoom };
+}
+
+function applyViewTransform() {
+  viewGroup.setAttribute('transform', `translate(${panX},${panY}) scale(${zoom})`);
+}
+
+function startDrag(compId, e) {
+  const comp = placed.find(c => c.id === compId);
+  if (!comp) return;
+  isDragging = true;
+  dragTarget = comp;
+  const svgRect = svgEl.getBoundingClientRect();
+  const w = screenToWorld(e.clientX - svgRect.left, e.clientY - svgRect.top);
+  dragOX = w.x - comp.x;
+  dragOY = w.y - comp.y;
+  comp.el.style.filter = 'brightness(1.1)';
+}
+
+// ═══════════════════════════════════════════════
+//  WIRE DRAWING
+// ═══════════════════════════════════════════════
+
+function buildOrthogonalPath(x1, y1, waypoints, x2, y2) {
+  // Build right-angle path: H then V between each pair of points
+  let d = `M${x1.toFixed(1)},${y1.toFixed(1)}`;
+  const pts = [...waypoints, { x: x2, y: y2 }];
+  let cx = x1, cy = y1;
+  for (const pt of pts) {
+    d += ` H${pt.x.toFixed(1)} V${pt.y.toFixed(1)}`;
+    cx = pt.x; cy = pt.y;
+  }
+  return d;
+}
+
+function handlePinDown(compId, pinId, el) {
+  const comp = placed.find(c => c.id === compId);
+  if (!comp) return;
+  const pin = comp.pins.find(p => p.id === pinId);
+  if (!pin) return;
+
+  const absX = comp.x + parseFloat(pin.lx);
+  const absY = comp.y + parseFloat(pin.ly);
+
+  if (!wireStart) {
+    wireStart = { compId, pinId, el, absX, absY };
+    wireWaypoints = [];
+    el.setAttribute('opacity','1');
+    el.setAttribute('r','6');
+    el.classList.add('wiring-start');
+    wirePreview.style.display = 'block';
+    wirePreview.setAttribute('d', `M${absX},${absY}`);
+  } else {
+    if (wireStart.compId === compId && wireStart.pinId === pinId) {
+      cancelWire(); return;
+    }
+    const g1 = bbGroupKey(wireStart.compId, wireStart.pinId);
+    const g2 = bbGroupKey(compId, pinId);
+    if (g1 && g2 && g1 === g2) {
+      showTooltip(null, '⚡ Уже соединены внутри breadboard');
+      setTimeout(hideTooltip, 1500);
+      cancelWire(); return;
+    }
+    const color = WIRE_PALETTE[wireColorIdx++ % WIRE_PALETTE.length];
+    createWire(wireStart.compId, wireStart.pinId, wireStart.absX, wireStart.absY,
+               compId, pinId, absX, absY, color, [...wireWaypoints]);
+
+    wireStart.el.classList.remove('wiring-start');
+    wireStart.el.classList.add('connected');
+    wireStart.el.setAttribute('opacity','0.85');
+    el.classList.add('connected');
+    el.setAttribute('opacity','0.85');
+
+    wirePreview.style.display = 'none';
+    wirePreview.setAttribute('d','');
+    wireStart = null;
+    wireWaypoints = [];
+  }
+}
+
+function addWaypoint(wx, wy) {
+  if (!wireStart) return;
+  wireWaypoints.push({ x: wx, y: wy });
+}
+
+function createWire(c1, p1, x1, y1, c2, p2, x2, y2, color, waypoints) {
+  const id = `W${uid++}`;
+  const el = document.createElementNS('http://www.w3.org/2000/svg','path');
+  el.setAttribute('class','wire-path');
+  el.setAttribute('stroke', color);
+  el.setAttribute('stroke-width', '2.5');
+  el.setAttribute('id', id);
+  el.setAttribute('data-wid', id);
+  el.setAttribute('d', buildOrthogonalPath(x1, y1, waypoints, x2, y2));
+
+  // Wider invisible hit area for easier clicking
+  const hit = document.createElementNS('http://www.w3.org/2000/svg','path');
+  hit.setAttribute('fill','none');
+  hit.setAttribute('stroke','transparent');
+  hit.setAttribute('stroke-width','12');
+  hit.setAttribute('style','cursor:pointer');
+  hit.setAttribute('d', buildOrthogonalPath(x1, y1, waypoints, x2, y2));
+
+  el.addEventListener('mouseenter', () => {
+    if (selectedWireId !== id) showTooltip(null, 'Клик — редактировать · ПКМ — удалить');
+  });
+  el.addEventListener('mouseleave', () => hideTooltip());
+
+  hit.addEventListener('mouseenter', () => {
+    if (selectedWireId !== id) showTooltip(null, 'Клик — редактировать · ПКМ — удалить');
+  });
+  hit.addEventListener('mouseleave', () => hideTooltip());
+
+  hit.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (wireStart) return;
+    if (selectedWireId === id) {
+      // Add waypoint at click position
+      const r = svgEl.getBoundingClientRect();
+      const wp = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+      const wire = wires.find(w => w.id === id);
+      if (wire) {
+        wire.waypoints.push({ x: wp.x, y: wp.y });
+        setWirePath(wire);
+        hit.setAttribute('d', wire.el.getAttribute('d'));
+        renderWireHandles(id);
+      }
+    } else {
+      selectWire(id);
+    }
+  });
+
+  hit.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deselectWire();
+    wiresLayer.removeChild(el);
+    wiresLayer.removeChild(hit);
+    wires = wires.filter(w => w.id !== id);
+  });
+  el.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    deselectWire();
+    wiresLayer.removeChild(el);
+    wiresLayer.removeChild(hit);
+    wires = wires.filter(w => w.id !== id);
+  });
+
+  wiresLayer.appendChild(el);
+  wiresLayer.appendChild(hit);
+  const wire = { id, c1, p1, x1, y1, c2, p2, x2, y2, color, waypoints, el, hit };
+  wires.push(wire);
+}
+
+function selectWire(id) {
+  deselectWire();
+  selectedWireId = id;
+  const wire = wires.find(w => w.id === id);
+  if (wire) wire.el.setAttribute('stroke-width','3.5');
+  renderWireHandles(id);
+}
+
+function deselectWire() {
+  if (selectedWireId) {
+    const wire = wires.find(w => w.id === selectedWireId);
+    if (wire) wire.el.setAttribute('stroke-width','2.5');
+  }
+  selectedWireId = null;
+  clearHandles();
+}
+
+function clearHandles() {
+  while (handlesLayer.firstChild) handlesLayer.removeChild(handlesLayer.firstChild);
+}
+
+function renderWireHandles(id) {
+  clearHandles();
+  const wire = wires.find(w => w.id === id);
+  if (!wire) return;
+
+  wire.waypoints.forEach((wp, idx) => {
+    const c = document.createElementNS('http://www.w3.org/2000/svg','circle');
+    c.setAttribute('cx', wp.x);
+    c.setAttribute('cy', wp.y);
+    c.setAttribute('r', '6');
+    c.setAttribute('fill', wire.color);
+    c.setAttribute('stroke', '#fff');
+    c.setAttribute('stroke-width', '2');
+    c.setAttribute('style', 'cursor:move');
+
+    c.addEventListener('mousedown', (e) => {
+      e.stopPropagation();
+      e.preventDefault();
+      draggingHandle = { wire, wpIdx: idx, el: c };
+    });
+    c.addEventListener('contextmenu', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      wire.waypoints.splice(idx, 1);
+      setWirePath(wire);
+      wire.hit.setAttribute('d', wire.el.getAttribute('d'));
+      renderWireHandles(id);
+    });
+    c.addEventListener('mouseenter', () => showTooltip(null, 'Тащи · ПКМ — удалить точку'));
+    c.addEventListener('mouseleave', () => hideTooltip());
+
+    handlesLayer.appendChild(c);
+  });
+}
+
+function setWirePath(wire) {
+  const d = buildOrthogonalPath(wire.x1, wire.y1, wire.waypoints, wire.x2, wire.y2);
+  wire.el.setAttribute('d', d);
+  if (wire.hit) wire.hit.setAttribute('d', d);
+}
+
+function cancelWire() {
+  if (wireStart) {
+    wireStart.el.classList.remove('wiring-start');
+    if (!wireStart.el.classList.contains('connected')) {
+      wireStart.el.setAttribute('opacity','0');
+    }
+    wireStart = null;
+  }
+  wireWaypoints = [];
+  wirePreview.style.display = 'none';
+  wirePreview.setAttribute('d','');
+}
+
+function updateWiresForComp(compId, newX, newY) {
+  const comp = placed.find(c => c.id === compId);
+  if (!comp) return;
+  wires.forEach(w => {
+    let changed = false;
+    if (w.c1 === compId) {
+      const pin = comp.pins.find(p => p.id === w.p1);
+      if (pin) { w.x1 = newX + parseFloat(pin.lx); w.y1 = newY + parseFloat(pin.ly); changed = true; }
+    }
+    if (w.c2 === compId) {
+      const pin = comp.pins.find(p => p.id === w.p2);
+      if (pin) { w.x2 = newX + parseFloat(pin.lx); w.y2 = newY + parseFloat(pin.ly); changed = true; }
+    }
+    if (changed) setWirePath(w);
+  });
+}
+
+// ═══════════════════════════════════════════════
+//  SVG MOUSE EVENTS
+// ═══════════════════════════════════════════════
+
+svgEl.addEventListener('mousemove', (e) => {
+  const r = svgEl.getBoundingClientRect();
+
+  // Pan
+  if (isPanning) {
+    panX = panStartPanX + (e.clientX - panStartX);
+    panY = panStartPanY + (e.clientY - panStartY);
+    applyViewTransform();
+    return;
+  }
+
+  const w = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+  const mx = w.x, my = w.y;
+
+  // Wire preview — orthogonal with waypoints
+  if (wireStart) {
+    wirePreview.setAttribute('d', buildOrthogonalPath(
+      wireStart.absX, wireStart.absY, wireWaypoints, mx, my
+    ));
+  }
+
+  // Drag handle (waypoint editing)
+  if (draggingHandle) {
+    draggingHandle.wire.waypoints[draggingHandle.wpIdx] = { x: mx, y: my };
+    setWirePath(draggingHandle.wire);
+    draggingHandle.el.setAttribute('cx', mx);
+    draggingHandle.el.setAttribute('cy', my);
+  }
+
+  // Drag component
+  if (isDragging && dragTarget) {
+    const newX = mx - dragOX;
+    const newY = my - dragOY;
+    dragTarget.el.setAttribute('transform', `translate(${newX.toFixed(1)},${newY.toFixed(1)})`);
+    updateWiresForComp(dragTarget.id, newX, newY);
+    dragTarget.x = newX;
+    dragTarget.y = newY;
+  }
+
+  // Update tooltip position
+  const tt = document.getElementById('tooltip');
+  if (tt.style.display === 'block') {
+    tt.style.left = (e.clientX + 14) + 'px';
+    tt.style.top  = (e.clientY - 10) + 'px';
+  }
+});
+
+svgEl.addEventListener('mouseup', (e) => {
+  if (draggingHandle) {
+    draggingHandle = null;
+    return;
+  }
+  if (isDragging && dragTarget) {
+    dragTarget.el.style.filter = '';
+    isDragging = false;
+    dragTarget = null;
+  }
+  if (isPanning) {
+    isPanning = false;
+    svgEl.style.cursor = '';
+  }
+});
+
+svgEl.addEventListener('mouseleave', () => {
+  if (isPanning) {
+    isPanning = false;
+    svgEl.style.cursor = '';
+  }
+});
+
+svgEl.addEventListener('mousedown', (e) => {
+  const onBackground = e.target === svgEl ||
+    (e.target.tagName === 'rect' && !e.target.closest('.comp-group')) ||
+    e.target.id === 'view-group';
+
+  // Right button or middle button → pan
+  if (e.button === 2 || e.button === 1) {
+    e.preventDefault();
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartPanX = panX;
+    panStartPanY = panY;
+    svgEl.style.cursor = 'grabbing';
+    return;
+  }
+
+  // Left button on empty background
+  if (e.button === 0 && onBackground) {
+    if (wireStart) {
+      // Add waypoint at cursor world position
+      const r = svgEl.getBoundingClientRect();
+      const wp = screenToWorld(e.clientX - r.left, e.clientY - r.top);
+      addWaypoint(wp.x, wp.y);
+      return;
+    }
+    if (selectedWireId) {
+      deselectWire();
+      return;
+    }
+    // Pan
+    isPanning = true;
+    panStartX = e.clientX;
+    panStartY = e.clientY;
+    panStartPanX = panX;
+    panStartPanY = panY;
+    svgEl.style.cursor = 'grabbing';
+    return;
+  }
+});
+
+// Right-click on canvas = cancel wire (only when not panning)
+svgEl.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  if (!e.target.closest('.wire-path')) {
+    cancelWire();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  DRAG FROM PANEL TO CANVAS
+// ═══════════════════════════════════════════════
+
+let panelDrag = null;
+
+document.querySelectorAll('.comp-card:not(.locked)').forEach(card => {
+  card.addEventListener('mousedown', (e) => {
+    e.preventDefault();
+    panelDrag = card.dataset.comp;
+  });
+});
+
+document.addEventListener('mouseup', (e) => {
+  // Stop panning if released anywhere
+  if (isPanning) {
+    isPanning = false;
+    svgEl.style.cursor = '';
+  }
+  if (!panelDrag) return;
+  const r = svgEl.getBoundingClientRect();
+  const mx = e.clientX - r.left;
+  const my = e.clientY - r.top;
+  if (mx >= 0 && my >= 0 && mx <= r.width && my <= r.height) {
+    const def = COMP_DEFS[panelDrag];
+    if (def) {
+      const w = screenToWorld(mx, my);
+      placeComponent(panelDrag, w.x - def.width/2, w.y - def.height/2);
+    }
+  }
+  panelDrag = null;
+});
+
+// ═══════════════════════════════════════════════
+//  ZOOM
+// ═══════════════════════════════════════════════
+
+function zoomIn()  { zoom = Math.min(2, zoom + 0.15);  applyViewTransform(); }
+function zoomOut() { zoom = Math.max(0.4, zoom - 0.15); applyViewTransform(); }
+
+svgEl.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const r = svgEl.getBoundingClientRect();
+  const sx = e.clientX - r.left;
+  const sy = e.clientY - r.top;
+  // Zoom toward cursor
+  const oldZoom = zoom;
+  const delta = e.deltaY > 0 ? -0.08 : 0.08;
+  zoom = Math.min(2, Math.max(0.4, zoom + delta));
+  panX = sx - (sx - panX) * (zoom / oldZoom);
+  panY = sy - (sy - panY) * (zoom / oldZoom);
+  applyViewTransform();
+}, { passive: false });
+
+// ═══════════════════════════════════════════════
+//  ROTATE
+// ═══════════════════════════════════════════════
+
+function rotateSelected() {
+  if (!selectedComp) return;
+  const comp = placed.find(c => c.id === selectedComp);
+  if (!comp) return;
+  comp.rotation = ((comp.rotation || 0) + 90) % 360;
+  const def = COMP_DEFS[comp.type];
+  const cx = def.width / 2, cy = def.height / 2;
+  comp.el.setAttribute('transform',
+    `translate(${comp.x},${comp.y}) rotate(${comp.rotation},${cx},${cy})`);
+}
+
+// ═══════════════════════════════════════════════
+//  KEYBOARD
+// ═══════════════════════════════════════════════
+
+document.addEventListener('keydown', (e) => {
+  if (document.activeElement === document.getElementById('code-editor')) return;
+
+  if (e.key === 'Escape') cancelWire();
+
+  if ((e.key === 'Delete' || e.key === 'Backspace') && selectedComp) {
+    const comp = placed.find(c => c.id === selectedComp);
+    if (comp) {
+      compsLayer.removeChild(comp.el);
+      placed = placed.filter(c => c.id !== selectedComp);
+      // Remove connected wires
+      const toRemove = wires.filter(w => w.c1===selectedComp || w.c2===selectedComp);
+      toRemove.forEach(w => wiresLayer.removeChild(w.el));
+      wires = wires.filter(w => w.c1!==selectedComp && w.c2!==selectedComp);
+      selectedComp = null;
+    }
+  }
+
+  if (e.ctrlKey && e.key === 'z') {
+    e.preventDefault();
+    if (wires.length > 0) {
+      const last = wires.pop();
+      wiresLayer.removeChild(last.el);
+    } else if (placed.length > 0) {
+      const last = placed.pop();
+      compsLayer.removeChild(last.el);
+    }
+  }
+
+  if (e.key === '+' || e.key === '=') zoomIn();
+  if (e.key === '-') zoomOut();
+  if (e.key === 'r' || e.key === 'R') rotateSelected();
+});
+
+// ═══════════════════════════════════════════════
+//  SIMULATION
+// ═══════════════════════════════════════════════
+
+const btnSim = document.getElementById('btn-sim');
+const simLabel = document.getElementById('sim-label');
+const simSvgIcon = document.getElementById('sim-svg-icon');
+const simBadge = document.getElementById('sim-badge');
+
+btnSim.addEventListener('click', () => {
+  simRunning = !simRunning;
+  if (simRunning) {
+    btnSim.classList.add('running');
+    simSvgIcon.innerHTML = '<rect x="3" y="3" width="7" height="7" rx="1" fill="currentColor"/>';
+    simLabel.textContent = 'Стоп';
+    simBadge.classList.add('visible');
+    runSimulation();
+  } else {
+    btnSim.classList.remove('running');
+    simSvgIcon.innerHTML = '<polygon points="2.5,1.5 10.5,6.5 2.5,11.5" fill="currentColor"/>';
+    simLabel.textContent = 'Запустить';
+    simBadge.classList.remove('visible');
+    stopSimulation();
+  }
+});
+
+function parseArduinoCode(code) {
+  const loopMatch = code.match(/void\s+loop\s*\(\s*\)([\s\S]*)/);
+  if (!loopMatch) return [];
+  const body = loopMatch[1];
+  const steps = [];
+  const re = /(digitalWrite\s*\(\s*(\d+)\s*,\s*(HIGH|LOW)\s*\))|(delay\s*\(\s*(\d+)\s*\))|(Serial\.print(?:ln)?\s*\(\s*"([^"]*)")/g;
+  let m;
+  while ((m = re.exec(body)) !== null) {
+    if (m[1]) steps.push({ type: 'write', pin: parseInt(m[2]), val: m[3] });
+    else if (m[4]) steps.push({ type: 'delay', ms: parseInt(m[5]) });
+    else if (m[6]) steps.push({ type: 'serial', msg: m[7] });
+  }
+  return steps;
+}
+
+function runSimulation() {
+  const code = document.getElementById('code-editor').value;
+  const steps = parseArduinoCode(code);
+
+  // Light ON LED on all placed Arduinos
+  placed.filter(c => c.type === 'arduino-mega').forEach(c => {
+    const onLed = document.getElementById(`${c.id}-led-on`);
+    if (onLed) onLed.setAttribute('opacity', '0.9');
+  });
+
+  executeSteps(steps, 0);
+}
+
+function executeSteps(steps, idx) {
+  if (!simRunning) return;
+  const step = steps[idx % steps.length];
+  if (step.type === 'write') setLED(step.pin, step.val === 'HIGH');
+  else if (step.type === 'serial') {}
+  const nextStep = steps[(idx+1) % steps.length];
+  const delay = step.type === 'delay' ? step.ms : (nextStep?.type === 'delay' ? nextStep.ms : 50);
+  simTimer = setTimeout(() => executeSteps(steps, idx+1), Math.max(delay, 10));
+}
+
+function setLED(pin, on) {
+  placed.filter(c => c.type === 'arduino-mega').forEach(mega => {
+    if (pin === 13) {
+      const led  = document.getElementById(`${mega.id}-led-l`);
+      const glow = document.getElementById(`${mega.id}-led-l-glow`);
+      if (led)  led.setAttribute('opacity',  on ? '1'   : '0');
+      if (glow) glow.setAttribute('opacity', on ? '0.8' : '0');
+    } else if (pin === 0) {
+      const el = document.getElementById(`${mega.id}-led-rx`);
+      if (el) el.setAttribute('opacity', on ? '0.95' : '0');
+    } else if (pin === 1) {
+      const el = document.getElementById(`${mega.id}-led-tx`);
+      if (el) el.setAttribute('opacity', on ? '0.95' : '0');
+    }
+  });
+}
+
+function stopSimulation() {
+  clearTimeout(simTimer);
+  placed.filter(c => c.type === 'arduino-mega').forEach(c => {
+    ['led-l','led-l-glow','led-tx','led-rx','led-on'].forEach(name => {
+      const el = document.getElementById(`${c.id}-${name}`);
+      if (el) { el.setAttribute('opacity','0'); el.removeAttribute('filter'); }
+    });
+  });
+  serialLog('Симуляция остановлена.');
+}
+
+function serialLog(msg) {
+  const out = document.getElementById('serial-out');
+  const ts = new Date().toLocaleTimeString('ru', {hour12:false});
+  out.innerHTML += `<div><span style="color:#484f58">[${ts}]</span> ${msg}</div>`;
+  out.scrollTop = out.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════
+//  CODE PANEL
+// ═══════════════════════════════════════════════
+
+const codePanel = document.getElementById('code-panel');
+const btnCode = document.getElementById('btn-code');
+
+btnCode.addEventListener('click', () => {
+  codeOpen = !codeOpen;
+  codePanel.classList.toggle('open', codeOpen);
+  btnCode.classList.toggle('open', codeOpen);
+});
+
+document.getElementById('btn-close-code').addEventListener('click', () => {
+  codeOpen = false;
+  codePanel.classList.remove('open');
+  btnCode.classList.remove('open');
+});
+
+
+
+// Line numbers
+const codeEditor = document.getElementById('code-editor');
+const lineNumbers = document.getElementById('line-numbers');
+
+function updateLineNumbers() {
+  const lines = codeEditor.value.split('\n').length;
+  lineNumbers.innerHTML = Array.from({length: lines}, (_,i) => i+1).join('<br>');
+}
+codeEditor.addEventListener('input', updateLineNumbers);
+codeEditor.addEventListener('scroll', () => { lineNumbers.scrollTop = codeEditor.scrollTop; });
+codeEditor.addEventListener('keydown', (e) => {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const s = codeEditor.selectionStart;
+    codeEditor.value = codeEditor.value.slice(0,s) + '  ' + codeEditor.value.slice(codeEditor.selectionEnd);
+    codeEditor.selectionStart = codeEditor.selectionEnd = s + 2;
+    updateLineNumbers();
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  TOOLTIP
+// ═══════════════════════════════════════════════
+
+const tooltipEl = document.getElementById('tooltip');
+
+function showTooltip(e, text) {
+  tooltipEl.textContent = text;
+  tooltipEl.style.display = 'block';
+  if (e) {
+    tooltipEl.style.left = (e.clientX + 14) + 'px';
+    tooltipEl.style.top  = (e.clientY - 10) + 'px';
+  }
+}
+function hideTooltip() { tooltipEl.style.display = 'none'; }
+
+// ═══════════════════════════════════════════════
+//  SEARCH / FILTER
+// ═══════════════════════════════════════════════
+
+document.getElementById('search-input').addEventListener('input', (e) => {
+  const q = e.target.value.toLowerCase();
+  document.querySelectorAll('.comp-card').forEach(card => {
+    const name = card.querySelector('.comp-card-name')?.textContent.toLowerCase() || '';
+    card.style.display = name.includes(q) ? '' : 'none';
+  });
+});
+
+// ═══════════════════════════════════════════════
+//  INIT: PRE-PLACE COMPONENTS
+// ═══════════════════════════════════════════════
+
+function init() {
+  updateLineNumbers();
+}
+
+window.addEventListener('load', init);
+</script>
+</body>
+</html>

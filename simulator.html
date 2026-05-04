@@ -1,0 +1,981 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Урок 1. Симулятор · Otter Robotics</title>
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&family=Fira+Code:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;font-family:'Nunito',sans-serif;background:#F0F4FF;color:#1E293B;overflow:hidden}
+
+/* ── HEADER ── */
+#header{
+  height:56px;background:#fff;border-bottom:1px solid #E2E8F0;
+  display:flex;align-items:center;padding:0 20px;gap:14px;
+  flex-shrink:0;z-index:30;position:relative;
+}
+.logo-box{width:36px;height:36px;border-radius:10px;overflow:hidden;flex-shrink:0}
+.logo-box img{width:100%;height:100%;object-fit:cover;display:block}
+.logo-text{font-size:17px;font-weight:900;color:#1E293B}
+.sep{width:1px;height:28px;background:#E2E8F0;margin:0 4px}
+.lesson-badge{
+  background:#EFF6FF;color:#3A86FF;
+  font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.6px;
+  padding:4px 10px;border-radius:20px;
+}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.score-box{
+  display:flex;align-items:center;gap:6px;
+  background:#FFF7ED;border:1.5px solid #FED7AA;border-radius:10px;
+  padding:5px 12px;font-size:13px;font-weight:800;color:#EA580C;
+}
+.score-box svg{flex-shrink:0}
+.back-btn{
+  font-size:13px;font-weight:700;color:#94A3B8;text-decoration:none;
+  display:flex;align-items:center;gap:4px;transition:color .15s;
+}
+.back-btn:hover{color:#3A86FF}
+
+/* ── LAYOUT ── */
+#main{display:flex;height:calc(100vh - 56px);overflow:hidden}
+
+/* ── LEFT: TASK PANEL ── */
+#task-panel{
+  width:300px;flex-shrink:0;background:#fff;
+  border-right:1px solid #E2E8F0;
+  display:flex;flex-direction:column;overflow:hidden;
+}
+#task-scroll{flex:1;overflow-y:auto;padding:20px 18px}
+
+.task-label{
+  font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;
+  color:#94A3B8;margin-bottom:8px;
+}
+.task-title{font-size:17px;font-weight:900;color:#1E293B;margin-bottom:8px;line-height:1.3}
+.task-desc{font-size:13px;color:#475569;line-height:1.65;margin-bottom:20px}
+
+/* Checklist */
+.checklist-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#94A3B8;margin-bottom:10px}
+.check-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 12px;border-radius:10px;margin-bottom:6px;
+  background:#F8FAFC;border:1.5px solid #E2E8F0;
+  font-size:13px;font-weight:700;color:#64748B;
+  transition:all .3s;
+}
+.check-item.done{background:#F0FDF4;border-color:#86EFAC;color:#16A34A}
+.check-dot{
+  width:20px;height:20px;border-radius:50%;border:2px solid #CBD5E1;
+  display:flex;align-items:center;justify-content:center;flex-shrink:0;
+  transition:all .3s;
+}
+.check-item.done .check-dot{background:#22C55E;border-color:#22C55E}
+.check-item.done .check-dot::after{content:'✓';font-size:11px;color:#fff;font-weight:900}
+
+.divider{height:1px;background:#E2E8F0;margin:18px 0}
+
+/* Hints */
+.hints-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.hints-title{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#94A3B8}
+.hint-count{font-size:11px;font-weight:700;color:#CBD5E1}
+
+.hint-btn{
+  width:100%;padding:11px;border-radius:10px;border:1.5px dashed #CBD5E1;
+  background:transparent;cursor:pointer;font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:700;color:#94A3B8;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .15s;margin-bottom:8px;
+}
+.hint-btn:hover:not(:disabled){border-color:#F59E0B;color:#D97706;background:#FFFBEB}
+.hint-btn:disabled{opacity:.4;cursor:not-allowed}
+
+.hint-card{
+  background:#FFFBEB;border:1.5px solid #FDE68A;border-radius:10px;
+  padding:11px 13px;margin-bottom:8px;
+  font-size:13px;color:#92400E;line-height:1.6;
+  animation:fadeSlide .3s ease;
+}
+.hint-card .hint-num{font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.8px;color:#D97706;margin-bottom:4px}
+@keyframes fadeSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+
+.hints-exhausted{
+  font-size:12px;color:#94A3B8;text-align:center;padding:8px;font-weight:600;
+}
+
+/* Explain button */
+.explain-btn{
+  width:100%;padding:11px;border-radius:10px;border:1.5px solid #E2E8F0;
+  background:#F8FAFC;cursor:pointer;font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:700;color:#475569;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  transition:all .15s;
+}
+.explain-btn:hover{border-color:#3A86FF;color:#3A86FF;background:#EFF6FF}
+
+/* Task panel footer */
+#task-footer{
+  padding:14px 18px;border-top:1px solid #E2E8F0;
+  display:flex;flex-direction:column;gap:8px;
+}
+.progress-label{display:flex;justify-content:space-between;font-size:11px;font-weight:700;color:#94A3B8}
+.progress-bar{height:6px;background:#E2E8F0;border-radius:10px;overflow:hidden}
+.progress-fill{height:100%;background:linear-gradient(90deg,#3A86FF,#8B5CF6);border-radius:10px;transition:width .4s}
+
+/* ── CENTER: SIMULATOR ── */
+#sim-area{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  background:#F0F4FF;position:relative;overflow:hidden;gap:16px;
+}
+
+.sim-title{
+  font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;
+  color:#94A3B8;
+}
+
+#arduino-wrap{
+  position:relative;
+  filter:drop-shadow(0 8px 32px rgba(0,0,0,.12));
+}
+#arduino-wrap img{display:block;width:420px;height:auto}
+
+/* LED overlays */
+.led-glow{
+  position:absolute;border-radius:50%;
+  transition:opacity .15s;opacity:0;pointer-events:none;
+}
+#led-glow{width:28px;height:28px;background:#ffcc00;filter:blur(8px);
+  left:calc(204px * 420/480 - 14px);top:calc(93px * 420/480 - 14px)}
+#led-core{width:10px;height:10px;background:#ffee55;border-radius:50%;
+  position:absolute;left:calc(204px * 420/480 - 5px);top:calc(93px * 420/480 - 5px);
+  transition:opacity .15s;opacity:0;pointer-events:none}
+#led-on-dot{width:8px;height:8px;background:#22c55e;border-radius:50%;
+  position:absolute;left:calc(444px * 420/480 - 4px);top:calc(200px * 420/480 - 4px);
+  opacity:.9;pointer-events:none}
+
+.sim-status{
+  font-size:13px;font-weight:700;color:#94A3B8;
+  display:flex;align-items:center;gap:8px;min-height:24px;
+}
+.sim-status.ok{color:#16A34A}
+.sim-status.err{color:#DC2626}
+.pulse{width:8px;height:8px;background:#22c55e;border-radius:50%;animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.4;transform:scale(.7)}}
+
+/* ── RIGHT: CODE PANEL ── */
+#code-panel{
+  width:360px;flex-shrink:0;background:#0D1117;
+  border-left:1px solid #21262D;
+  display:flex;flex-direction:column;
+}
+#code-topbar{
+  background:#161B22;border-bottom:1px solid #21262D;
+  height:44px;display:flex;align-items:center;padding:0 16px;
+  justify-content:space-between;flex-shrink:0;
+}
+#code-topbar span{font-size:13px;font-weight:700;color:#8B949E;display:flex;align-items:center;gap:7px}
+.lang-dot{width:8px;height:8px;background:#3A86FF;border-radius:50%}
+
+#editor-wrap{flex:1;display:flex;overflow:hidden}
+#line-nums{
+  background:#0D1117;color:#484F58;font-family:'Fira Code',monospace;
+  font-size:13px;line-height:1.7;padding:16px 8px 16px 14px;
+  text-align:right;min-width:38px;overflow:hidden;pointer-events:none;
+  border-right:1px solid #21262D;user-select:none;
+}
+#code-editor{
+  flex:1;background:#0D1117;color:#E6EDF3;
+  font-family:'Fira Code',monospace;font-size:13px;line-height:1.7;
+  padding:16px 14px;border:none;outline:none;resize:none;
+  tab-size:2;white-space:pre;overflow:auto;caret-color:#E6EDF3;
+}
+
+#code-footer{
+  background:#161B22;padding:12px 16px;
+  display:flex;gap:8px;border-top:1px solid #21262D;flex-shrink:0;
+}
+#run-btn{
+  flex:1;padding:10px;border:none;border-radius:8px;
+  background:linear-gradient(135deg,#22C55E,#16A34A);
+  color:#fff;font-family:'Nunito',sans-serif;font-size:14px;font-weight:800;
+  cursor:pointer;display:flex;align-items:center;justify-content:center;gap:7px;
+  transition:all .15s;
+}
+#run-btn:hover{background:linear-gradient(135deg,#16A34A,#15803D)}
+#run-btn.running{background:linear-gradient(135deg,#EF4444,#DC2626)}
+#reset-btn{
+  padding:10px 14px;border:1.5px solid #21262D;border-radius:8px;
+  background:transparent;color:#8B949E;font-family:'Nunito',sans-serif;
+  font-size:13px;font-weight:700;cursor:pointer;transition:all .15s;
+}
+#reset-btn:hover{border-color:#484F58;color:#E6EDF3}
+
+#output-box{
+  background:#010409;border-top:1px solid #21262D;
+  min-height:0;max-height:0;overflow:hidden;transition:max-height .3s;
+}
+#output-box.open{max-height:120px}
+#output-inner{padding:10px 16px;font-family:'Fira Code',monospace;font-size:12px;line-height:1.6}
+
+/* ── EXPLAIN DRAWER ── */
+#explain-drawer{
+  position:fixed;top:56px;left:0;right:0;bottom:0;
+  background:rgba(0,0,0,.4);z-index:50;
+  display:none;align-items:flex-start;justify-content:center;
+  padding:30px 16px;
+}
+#explain-drawer.open{display:flex}
+#explain-box{
+  background:#fff;border-radius:16px;max-width:600px;width:100%;
+  max-height:calc(100vh - 116px);overflow:hidden;display:flex;flex-direction:column;
+  box-shadow:0 20px 60px rgba(0,0,0,.25);animation:boxIn .25s ease;
+}
+@keyframes boxIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+#explain-header{
+  padding:18px 22px;border-bottom:1px solid #E2E8F0;
+  display:flex;align-items:center;justify-content:space-between;flex-shrink:0;
+}
+#explain-header h2{font-size:17px;font-weight:900;color:#1E293B}
+.close-x{
+  width:30px;height:30px;border:none;background:#F1F5F9;border-radius:8px;
+  font-size:18px;cursor:pointer;color:#94A3B8;display:flex;align-items:center;
+  justify-content:center;transition:all .15s;
+}
+.close-x:hover{background:#E2E8F0;color:#1E293B}
+#explain-body{flex:1;overflow-y:auto;padding:20px 22px;display:flex;flex-direction:column;gap:18px}
+
+.concept{background:#F8FAFC;border-radius:12px;padding:16px 18px;border-left:4px solid #3A86FF}
+.concept h3{font-size:14px;font-weight:900;color:#1E293B;margin-bottom:6px}
+.concept p{font-size:13px;color:#475569;line-height:1.65}
+.concept code{
+  display:block;background:#1E293B;color:#7DD3FC;
+  font-family:'Fira Code',monospace;font-size:12px;
+  padding:8px 12px;border-radius:7px;margin-top:8px;line-height:1.6;
+}
+
+/* ── SUCCESS OVERLAY ── */
+#success-overlay{
+  position:fixed;inset:0;z-index:100;
+  display:none;align-items:center;justify-content:center;
+  background:linear-gradient(135deg,rgba(58,134,255,.18),rgba(139,92,246,.18));
+  backdrop-filter:blur(6px);
+}
+#success-overlay.show{display:flex}
+#success-box{
+  background:#fff;border-radius:24px;padding:44px 40px 36px;text-align:center;
+  max-width:460px;width:calc(100% - 32px);
+  animation:popIn .4s cubic-bezier(.34,1.56,.64,1);
+  box-shadow:0 24px 80px rgba(0,0,0,.22);
+  position:relative;overflow:hidden;
+}
+#success-box::before{
+  content:'';position:absolute;inset:0;
+  background:linear-gradient(160deg,#EFF6FF 0%,#F5F3FF 100%);
+  opacity:.5;pointer-events:none;
+}
+@keyframes popIn{from{opacity:0;transform:scale(.6) translateY(20px)}to{opacity:1;transform:scale(1) translateY(0)}}
+
+.success-top{position:relative;margin-bottom:20px}
+.success-badge{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#EFF6FF;color:#3A86FF;border-radius:100px;
+  padding:5px 14px;font-size:11px;font-weight:900;letter-spacing:.8px;
+  text-transform:uppercase;margin-bottom:16px;
+}
+.success-emoji-big{font-size:72px;display:block;line-height:1;margin-bottom:12px;
+  animation:bounce .6s .3s cubic-bezier(.34,1.56,.64,1) both}
+@keyframes bounce{from{transform:scale(.4)}to{transform:scale(1)}}
+.success-title{font-size:26px;font-weight:900;color:#1E293B;margin-bottom:6px;line-height:1.2}
+.success-sub{font-size:14px;color:#64748B;margin-bottom:24px;line-height:1.7;padding:0 8px}
+
+.success-score-wrap{
+  background:linear-gradient(135deg,#FFF7ED,#FEF3C7);
+  border:2px solid #FED7AA;border-radius:16px;
+  padding:16px 24px;margin-bottom:28px;position:relative;
+}
+.success-score-label{font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.8px;color:#D97706;margin-bottom:4px}
+.success-score-num{
+  font-size:42px;font-weight:900;color:#EA580C;line-height:1;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+}
+.success-score-max{font-size:16px;font-weight:700;color:#FCA572;margin-top:4px}
+
+.success-grade{
+  display:inline-flex;align-items:center;gap:6px;
+  background:#F0FDF4;color:#15803D;border-radius:8px;
+  padding:4px 12px;font-size:12px;font-weight:800;margin-bottom:24px;
+}
+
+.success-btns{display:flex;flex-direction:column;gap:10px;position:relative}
+.btn-home{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;padding:15px;border-radius:14px;border:none;
+  background:linear-gradient(135deg,#3A86FF,#8B5CF6);color:#fff;
+  font-family:'Nunito',sans-serif;font-size:16px;font-weight:800;
+  cursor:pointer;transition:all .15s;
+  box-shadow:0 4px 16px rgba(58,134,255,.35);
+}
+.btn-home:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(58,134,255,.45)}
+.btn-home:active{transform:translateY(0)}
+.btn-lesson{
+  display:flex;align-items:center;justify-content:center;gap:6px;
+  width:100%;padding:12px;border-radius:12px;
+  border:2px solid #E2E8F0;background:transparent;
+  font-family:'Nunito',sans-serif;font-size:14px;font-weight:700;color:#64748B;
+  cursor:pointer;transition:all .15s;
+}
+.btn-lesson:hover{border-color:#CBD5E1;color:#1E293B;background:#F8FAFC}
+
+/* confetti canvas */
+#confetti-canvas{
+  position:fixed;inset:0;pointer-events:none;z-index:101;
+}
+
+
+/* ── MOBILE TABS ── */
+#mobile-tabs{
+  display:none;
+  position:fixed;bottom:0;left:0;right:0;z-index:40;
+  background:#fff;border-top:1px solid #E2E8F0;
+  height:56px;
+}
+.mob-tab{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:3px;font-size:10px;font-weight:800;color:#94A3B8;
+  border:none;background:transparent;cursor:pointer;padding:6px 0;
+  transition:color .15s;
+}
+.mob-tab.active{color:#3A86FF}
+.mob-tab svg{flex-shrink:0}
+
+@media (max-width:768px){
+  html,body{overflow:hidden}
+  #header{padding:0 12px;gap:8px}
+  .logo-text{display:none}
+  .sep{display:none}
+  .back-btn span{display:none}
+
+  #main{
+    flex-direction:column;
+    height:calc(100vh - 56px - 56px);
+    overflow:hidden;
+  }
+
+  #task-panel{
+    width:100%;flex-shrink:0;
+    height:100%;
+    display:none;
+    border-right:none;border-bottom:1px solid #E2E8F0;
+  }
+  #task-panel.mob-active{display:flex}
+
+  #sim-area{
+    width:100%;flex:none;
+    height:100%;
+    display:none;
+    padding:16px;
+  }
+  #sim-area.mob-active{display:flex}
+
+  #arduino-wrap img{width:100%;max-width:340px;height:auto}
+
+  #code-panel{
+    width:100%;flex-shrink:0;
+    height:100%;
+    display:none;
+    border-left:none;border-top:1px solid #21262D;
+  }
+  #code-panel.mob-active{display:flex}
+
+  #mobile-tabs{display:flex}
+}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#CBD5E1;border-radius:4px}
+</style>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+  firebase.initializeApp({
+    apiKey: "AIzaSyA_Z8DyhW8u5_CKRWp3KZb3RFbvbbZAPnI",
+    authDomain: "otterarduino.firebaseapp.com",
+    projectId: "otterarduino",
+    storageBucket: "otterarduino.firebasestorage.app",
+    messagingSenderId: "402504716201",
+    appId: "1:402504716201:web:3a2bfc04b4eec10b27beb8"
+  });
+  const _auth = firebase.auth();
+  const _db   = firebase.firestore();
+
+  async function saveLessonComplete(lessonIndex, lessonScore) {
+    const user = _auth.currentUser;
+    if (!user) return;
+    const ref  = _db.collection('users').doc(user.uid);
+    const snap = await ref.get();
+    if (!snap.exists) return;
+    const data = snap.data();
+    const completed   = data.lessonsCompleted || [];
+    const scores      = data.lessonScores     || {};
+    if (!completed.includes(lessonIndex)) completed.push(lessonIndex);
+    scores[String(lessonIndex)] = lessonScore;
+    const total = Object.values(scores).reduce(function(a, b) { return a + b; }, 0);
+    await ref.update({ lessonsCompleted: completed, lessonScores: scores, score: total });
+  }
+</script>
+</head>
+<body>
+
+<!-- HEADER -->
+<div id="header">
+  <div class="logo-box"><img src="../otter_logo.png" alt="logo"></div>
+  <span class="logo-text">Otter Robotics</span>
+  <div class="sep"></div>
+  <span class="lesson-badge">Урок 1 · Симулятор</span>
+  <div class="header-right">
+    <div class="score-box">
+      <svg width="14" height="14" fill="none" viewBox="0 0 14 14">
+        <polygon points="7,1 8.8,5.2 13.5,5.7 10,8.9 11,13.5 7,11 3,13.5 4,8.9 0.5,5.7 5.2,5.2" fill="#EA580C"/>
+      </svg>
+      <span id="score-display">100</span> очков
+    </div>
+    <a class="back-btn" href="index.html">
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+        <path d="M9 2L4 7l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      К уроку
+    </a>
+  </div>
+</div>
+
+<!-- MAIN -->
+<div id="main">
+
+  <!-- LEFT: TASK PANEL -->
+  <div id="task-panel">
+    <div id="task-scroll">
+      <div class="task-label">Твоё задание</div>
+      <div class="task-title">Заставь светодиод мигать</div>
+      <div class="task-desc">
+        На плате Arduino есть встроенный светодиод, подключённый к <strong>пину 13</strong>. Напиши программу которая будет включать и выключать его каждую секунду.
+      </div>
+
+      <div class="checklist-title">Что нужно сделать</div>
+
+      <div class="check-item" id="chk-setup">
+        <div class="check-dot"></div>
+        Настроить пин 13 как выход
+      </div>
+      <div class="check-item" id="chk-high">
+        <div class="check-dot"></div>
+        Включить светодиод
+      </div>
+      <div class="check-item" id="chk-delay">
+        <div class="check-dot"></div>
+        Подождать 1 секунду
+      </div>
+      <div class="check-item" id="chk-low">
+        <div class="check-dot"></div>
+        Выключить светодиод
+      </div>
+      <div class="check-item" id="chk-loop">
+        <div class="check-dot"></div>
+        Повторять бесконечно
+      </div>
+
+      <div class="divider"></div>
+
+      <div class="hints-header">
+        <div class="hints-title">Подсказки</div>
+        <div class="hint-count" id="hint-count">0 из 3 использовано</div>
+      </div>
+
+      <button class="hint-btn" id="hint-btn" onclick="revealHint()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <circle cx="7" cy="7" r="6" stroke="#D97706" stroke-width="1.5"/>
+          <path d="M7 10V7M7 4.5V4" stroke="#D97706" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Получить подсказку (−15 очков)
+      </button>
+      <div id="hints-container"></div>
+
+      <div class="divider"></div>
+
+      <button class="explain-btn" onclick="openExplain()">
+        <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+          <rect x="1.5" y="1.5" width="11" height="11" rx="2.5" stroke="#3A86FF" stroke-width="1.5"/>
+          <path d="M4.5 5h5M4.5 7.5h3" stroke="#3A86FF" stroke-width="1.5" stroke-linecap="round"/>
+        </svg>
+        Объяснить концепцию
+      </button>
+    </div>
+
+    <div id="task-footer">
+      <div class="progress-label">
+        <span>Прогресс</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-bar">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- CENTER: SIMULATOR -->
+  <div id="sim-area">
+    <div class="sim-title">Симулятор Arduino</div>
+    <div id="arduino-wrap">
+      <img src="../arduino-sim1.png" alt="Arduino UNO">
+      <div class="led-glow" id="led-glow"></div>
+      <div id="led-core"></div>
+      <div id="led-on-dot"></div>
+    </div>
+    <div class="sim-status" id="sim-status">Напиши код и нажми Запустить</div>
+  </div>
+
+  <!-- RIGHT: CODE PANEL -->
+  <div id="code-panel">
+    <div id="code-topbar">
+      <span><div class="lang-dot"></div>sketch.ino</span>
+    </div>
+    <div id="editor-wrap">
+      <div id="line-nums">1<br>2<br>3<br>4<br>5<br>6<br>7<br>8</div>
+      <textarea id="code-editor" spellcheck="false" onkeydown="handleTab(event)" oninput="onCodeChange()">void setup() {
+
+}
+
+void loop() {
+
+}</textarea>
+    </div>
+    <div id="output-box">
+      <div id="output-inner"></div>
+    </div>
+    <div id="code-footer">
+      <button id="reset-btn" onclick="resetCode()">Сброс</button>
+      <button id="run-btn" onclick="toggleRun()">
+        <svg width="13" height="13" viewBox="0 0 13 13" fill="none" id="run-icon">
+          <polygon points="2.5,1.5 10.5,6.5 2.5,11.5" fill="currentColor"/>
+        </svg>
+        <span id="run-label">Запустить</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- EXPLAIN DRAWER -->
+<div id="explain-drawer" onclick="closeExplain(event)">
+  <div id="explain-box">
+    <div id="explain-header">
+      <h2>📖 Объяснение концепций</h2>
+      <button class="close-x" onclick="closeExplain()">×</button>
+    </div>
+    <div id="explain-body">
+      <div class="concept">
+        <h3>Структура программы Arduino</h3>
+        <p>Каждая программа состоит из двух обязательных функций. <code>setup()</code> выполняется один раз при включении. <code>loop()</code> повторяется снова и снова, пока плата включена.</p>
+        <code>void setup() { /* один раз */ }
+void loop()  { /* бесконечно */ }</code>
+      </div>
+      <div class="concept">
+        <h3>pinMode: настройка пина</h3>
+        <p>Перед использованием пина нужно указать Arduino: это вход или выход? Для светодиода выход (<code>OUTPUT</code>).</p>
+        <code>pinMode(13, OUTPUT);  // пин 13 = выход</code>
+      </div>
+      <div class="concept">
+        <h3>digitalWrite: включить/выключить</h3>
+        <p><code>HIGH</code> подаёт напряжение на пин (светодиод горит), <code>LOW</code> убирает (светодиод гаснет).</p>
+        <code>digitalWrite(13, HIGH);  // включить
+digitalWrite(13, LOW);   // выключить</code>
+      </div>
+      <div class="concept">
+        <h3>delay: пауза</h3>
+        <p>Приостанавливает программу на указанное число <strong>миллисекунд</strong>. 1 секунда = 1000 миллисекунд.</p>
+        <code>delay(1000);  // пауза 1 секунда</code>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- CONFETTI -->
+<canvas id="confetti-canvas"></canvas>
+
+<!-- SUCCESS OVERLAY -->
+<div id="success-overlay">
+  <div id="success-box">
+    <div class="success-top">
+      <span class="success-emoji-big">🎉</span>
+      <div class="success-title">Поздравляем!</div>
+      <div class="success-badge">✅ Пробный урок пройден</div>
+    </div>
+
+    <div class="success-score-wrap">
+      <div class="success-score-label">Ваш результат</div>
+      <div class="success-score-num">
+        <svg width="32" height="32" viewBox="0 0 14 14" fill="none">
+          <polygon points="7,1 8.8,5.2 13.5,5.7 10,8.9 11,13.5 7,11 3,13.5 4,8.9 0.5,5.7 5.2,5.2" fill="#EA580C"/>
+        </svg>
+        <span id="final-score">100</span>
+      </div>
+      <div class="success-score-max">из 100 возможных очков</div>
+    </div>
+
+    <div style="background:linear-gradient(135deg,#EFF6FF,#F5F3FF);border-radius:16px;padding:20px 22px;margin:20px 0;text-align:left;border:1.5px solid #DBEAFE">
+      <div style="font-size:15px;font-weight:900;color:#1E293B;margin-bottom:10px">Вас ждут ещё 23 урока! 🚀</div>
+      <div style="font-size:14px;color:#475569;line-height:1.7;font-weight:600">
+        Вы прошли пробный урок и уже написали свою первую программу для Arduino.<br><br>
+        В полном курсе вас ждут <strong style="color:#3A86FF">23 урока</strong>, реальные проекты и <strong style="color:#8B5CF6">личные менторы</strong>, которые помогут вам на каждом шаге обучения.
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:14px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1E293B"><span style="color:#06D6A0;font-size:16px">✓</span> 24 практических урока с симулятором</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1E293B"><span style="color:#06D6A0;font-size:16px">✓</span> Проверка кода и разбор ошибок ментором</div>
+        <div style="display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:#1E293B"><span style="color:#06D6A0;font-size:16px">✓</span> Финальный проект и сертификат</div>
+      </div>
+    </div>
+
+    <div class="success-btns">
+      <a href="https://wa.me/77476138955" target="_blank" style="
+        display:flex;align-items:center;justify-content:center;gap:10px;
+        background:linear-gradient(135deg,#25D366,#128C7E);
+        color:#fff;border-radius:14px;padding:15px 24px;
+        font-size:16px;font-weight:900;text-decoration:none;
+        box-shadow:0 4px 0 #0a6b4f;transition:all .15s;
+      " onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform=''">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="white">
+          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/>
+          <path d="M12 0C5.373 0 0 5.373 0 12c0 2.127.558 4.126 1.532 5.857L.057 23.882a.5.5 0 0 0 .614.612l6.189-1.438A11.945 11.945 0 0 0 12 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.907 0-3.686-.526-5.211-1.436l-.373-.22-3.865.898.943-3.74-.242-.386A10 10 0 0 1 2 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z"/>
+        </svg>
+        Записаться на полный курс
+      </a>
+      <button class="btn-lesson" onclick="location.href='index.html'">
+        ← К материалу урока
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── STATE ──
+let score = 100;
+let hintsUsed = 0;
+let simRunning = false;
+let blinkTimer = null;
+let ledState = false;
+let completedChecks = new Set();
+
+const HINTS = [
+  { num: 1, text: 'В функции <b>setup()</b> нужно объявить пин 13 как выход. Для этого есть специальная функция которая принимает номер пина и режим.' },
+  { num: 2, text: 'Используй <b>pinMode(13, OUTPUT)</b> в setup(). В loop() нужно два действия: включить светодиод и выключить его. Между ними нужна пауза.' },
+  { num: 3, text: 'Почти готово! Вот структура loop(): <br><br><code style="font-family:monospace;font-size:12px">digitalWrite(13, HIGH);<br>delay(1000);<br>digitalWrite(13, LOW);<br>delay(1000);</code>' },
+];
+
+// ── LINE NUMBERS ──
+function updateLineNums() {
+  const lines = document.getElementById('code-editor').value.split('\n').length;
+  document.getElementById('line-nums').innerHTML =
+    Array.from({length: lines}, (_, i) => i + 1).join('<br>');
+}
+
+// ── TAB SUPPORT ──
+function handleTab(e) {
+  if (e.key === 'Tab') {
+    e.preventDefault();
+    const el = e.target;
+    const s = el.selectionStart, end = el.selectionEnd;
+    el.value = el.value.substring(0, s) + '  ' + el.value.substring(end);
+    el.selectionStart = el.selectionEnd = s + 2;
+    onCodeChange();
+  }
+}
+
+// ── CODE CHANGE → live checklist ──
+function onCodeChange() {
+  updateLineNums();
+  const code = document.getElementById('code-editor').value;
+  liveCheck(code);
+}
+
+function liveCheck(code) {
+  const checks = {
+    'chk-setup': /pinMode\s*\(\s*(13|LED_BUILTIN)\s*,\s*OUTPUT\s*\)/.test(code),
+    'chk-high':  /digitalWrite\s*\(\s*(13|LED_BUILTIN)\s*,\s*HIGH\s*\)/.test(code),
+    'chk-delay': /delay\s*\(\s*\d+\s*\)/.test(code),
+    'chk-low':   /digitalWrite\s*\(\s*(13|LED_BUILTIN)\s*,\s*LOW\s*\)/.test(code),
+    'chk-loop':  /void\s+loop\s*\(\s*\)[\s\S]*digitalWrite/.test(code),
+  };
+  let done = 0;
+  for (const [id, ok] of Object.entries(checks)) {
+    const el = document.getElementById(id);
+    if (ok) { el.classList.add('done'); done++; }
+    else     { el.classList.remove('done'); }
+  }
+  const pct = Math.round(done / 5 * 100);
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-pct').textContent = pct + '%';
+}
+
+// ── HINTS ──
+function revealHint() {
+  if (hintsUsed >= HINTS.length) return;
+  const hint = HINTS[hintsUsed];
+  hintsUsed++;
+
+  score = Math.max(0, score - 15);
+  document.getElementById('score-display').textContent = score;
+
+  const el = document.createElement('div');
+  el.className = 'hint-card';
+  el.innerHTML = `<div class="hint-num">Подсказка ${hint.num}</div>${hint.text}`;
+  document.getElementById('hints-container').appendChild(el);
+
+  document.getElementById('hint-count').textContent = `${hintsUsed} из 3 использовано`;
+
+  if (hintsUsed >= HINTS.length) {
+    document.getElementById('hint-btn').disabled = true;
+    document.getElementById('hint-btn').textContent = 'Все подсказки использованы';
+  }
+}
+
+// ── EXPLAIN ──
+function openExplain() {
+  document.getElementById('explain-drawer').classList.add('open');
+}
+function closeExplain(e) {
+  if (!e || e.target === document.getElementById('explain-drawer') || e.currentTarget.classList.contains('close-x')) {
+    document.getElementById('explain-drawer').classList.remove('open');
+  }
+}
+
+// ── RESET ──
+const DEFAULT_CODE = `void setup() {
+
+}
+
+void loop() {
+
+}`;
+
+function resetCode() {
+  if (simRunning) stopSim();
+  document.getElementById('code-editor').value = DEFAULT_CODE;
+  onCodeChange();
+  setOutput('');
+}
+
+// ── RUN / STOP ──
+function toggleRun() {
+  if (simRunning) { stopSim(); return; }
+  runSim();
+}
+
+function runSim() {
+  const code = document.getElementById('code-editor').value;
+  const result = validateCode(code);
+
+  if (!result.ok) {
+    setOutput(result.errors.map(e => `❌ ${e}`).join('\n'), '#EF4444');
+    setStatus(result.errors[0], 'err');
+    return;
+  }
+
+  // Всё верно, запускаем мигание
+  simRunning = true;
+  document.getElementById('run-btn').classList.add('running');
+  document.getElementById('run-label').textContent = 'Остановить';
+  document.getElementById('run-icon').innerHTML = '<rect x="2" y="2" width="3.5" height="9" rx="1" fill="currentColor"/><rect x="7.5" y="2" width="3.5" height="9" rx="1" fill="currentColor"/>';
+  setOutput('✅ Компиляция прошла успешно\n▶ Программа запущена', '#22C55E');
+  setStatus('Симуляция запущена', 'ok');
+
+  const delayMs = extractDelay(code);
+  startBlink(delayMs);
+
+  // Show success after 2 blink cycles (max 3 seconds)
+  const wait = Math.min(delayMs * 2 + 400, 3000);
+  setTimeout(() => showSuccess(), wait);
+}
+
+function stopSim() {
+  simRunning = false;
+  clearTimeout(blinkTimer);
+  setLED(false);
+  document.getElementById('run-btn').classList.remove('running');
+  document.getElementById('run-label').textContent = 'Запустить';
+  document.getElementById('run-icon').innerHTML = '<polygon points="2.5,1.5 10.5,6.5 2.5,11.5" fill="currentColor"/>';
+  setStatus('Остановлено', '');
+}
+
+function validateCode(code) {
+  const errors = [];
+  if (!/void\s+setup\s*\(/.test(code))  errors.push('Нет функции setup()');
+  if (!/void\s+loop\s*\(/.test(code))   errors.push('Нет функции loop()');
+  if (!/pinMode\s*\(\s*(13|LED_BUILTIN)\s*,\s*OUTPUT\s*\)/.test(code))
+    errors.push('Нет pinMode(13, OUTPUT) в setup()');
+  if (!/digitalWrite\s*\(\s*(13|LED_BUILTIN)\s*,\s*HIGH\s*\)/.test(code))
+    errors.push('Нет digitalWrite(13, HIGH)');
+  if (!/digitalWrite\s*\(\s*(13|LED_BUILTIN)\s*,\s*LOW\s*\)/.test(code))
+    errors.push('Нет digitalWrite(13, LOW)');
+  if (!/delay\s*\(\s*\d+\s*\)/.test(code))
+    errors.push('Нет delay(). Добавь паузу между включением и выключением');
+  return { ok: errors.length === 0, errors };
+}
+
+function extractDelay(code) {
+  const m = code.match(/delay\s*\(\s*(\d+)\s*\)/);
+  if (m) return Math.min(Math.max(parseInt(m[1]), 100), 2000);
+  return 1000;
+}
+
+// ── LED ──
+function setLED(on) {
+  const glow = document.getElementById('led-glow');
+  const core = document.getElementById('led-core');
+  glow.style.opacity = on ? '0.85' : '0';
+  core.style.opacity = on ? '1'    : '0';
+}
+
+function startBlink(intervalMs) {
+  ledState = !ledState;
+  setLED(ledState);
+  if (simRunning) {
+    blinkTimer = setTimeout(() => startBlink(intervalMs), intervalMs);
+  }
+}
+
+// ── OUTPUT ──
+function setOutput(text, color) {
+  const box = document.getElementById('output-box');
+  const inner = document.getElementById('output-inner');
+  inner.textContent = text;
+  inner.style.color = color || '#8B949E';
+  box.classList.toggle('open', !!text);
+}
+
+function setStatus(text, type) {
+  const el = document.getElementById('sim-status');
+  el.className = 'sim-status' + (type ? ' ' + type : '');
+  if (type === 'ok') {
+    el.innerHTML = `<div class="pulse"></div>${text}`;
+  } else {
+    el.textContent = text;
+  }
+}
+
+// ── SUCCESS ──
+function showSuccess() {
+  document.getElementById('final-score').textContent = score;
+
+  const grade = score >= 90 ? '⭐⭐⭐ Превосходно!'
+              : score >= 70 ? '⭐⭐ Отличная работа!'
+              : score >= 50 ? '⭐ Хорошая работа!'
+              : '💪 Ты справился!';
+  var gradeEl = document.getElementById('success-grade');
+  if (gradeEl) gradeEl.textContent = grade;
+
+  document.getElementById('success-overlay').classList.add('show');
+
+  // Сохраняем урок 0 как выполненный в Firebase
+  saveLessonComplete(0, score).catch(function(e) { console.warn('save error', e); });
+
+  try { launchConfetti(); } catch(e) { console.warn('confetti error', e); }
+}
+
+// ── CONFETTI ──
+function launchConfetti() {
+  const canvas = document.getElementById('confetti-canvas');
+  const ctx = canvas.getContext('2d');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+
+  const colors = ['#3A86FF','#8B5CF6','#22C55E','#F59E0B','#EF4444','#EC4899'];
+  const pieces = Array.from({length: 120}, () => ({
+    x: Math.random() * canvas.width,
+    y: -10 - Math.random() * 200,
+    w: 6 + Math.random() * 8,
+    h: 10 + Math.random() * 6,
+    color: colors[Math.floor(Math.random() * colors.length)],
+    rot: Math.random() * Math.PI * 2,
+    vx: -2 + Math.random() * 4,
+    vy: 2 + Math.random() * 4,
+    vr: (Math.random() - .5) * .15,
+    opacity: 1,
+  }));
+
+  let frame;
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    let alive = false;
+    pieces.forEach(p => {
+      p.x += p.vx; p.y += p.vy; p.rot += p.vr;
+      if (p.y > canvas.height * .6) p.opacity -= .018;
+      p.opacity = Math.max(0, p.opacity);
+      if (p.y < canvas.height + 20) alive = true;
+      ctx.save();
+      ctx.globalAlpha = p.opacity;
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+      ctx.restore();
+    });
+    if (alive) frame = requestAnimationFrame(draw);
+    else ctx.clearRect(0, 0, canvas.width, canvas.height);
+  }
+  draw();
+}
+
+// ── INIT ──
+updateLineNums();
+</script>
+
+<!-- MOBILE TABS -->
+<div id="mobile-tabs">
+  <button class="mob-tab active" id="tab-task" onclick="switchTab('task')">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="3" y="4" width="14" height="2" rx="1" fill="currentColor"/>
+      <rect x="3" y="9" width="10" height="2" rx="1" fill="currentColor"/>
+      <rect x="3" y="14" width="12" height="2" rx="1" fill="currentColor"/>
+    </svg>
+    Задание
+  </button>
+  <button class="mob-tab" id="tab-sim" onclick="switchTab('sim')">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <rect x="2" y="5" width="16" height="11" rx="2" stroke="currentColor" stroke-width="1.5" fill="none"/>
+      <circle cx="10" cy="10.5" r="2.5" fill="currentColor"/>
+    </svg>
+    Симулятор
+  </button>
+  <button class="mob-tab" id="tab-code" onclick="switchTab('code')">
+    <svg width="20" height="20" viewBox="0 0 20 20" fill="none">
+      <path d="M7 6L3 10l4 4M13 6l4 4-4 4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    Код
+  </button>
+</div>
+<script>
+// ── MOBILE TABS ──
+function switchTab(tab) {
+  var panels = {
+    task: document.getElementById('task-panel'),
+    sim:  document.getElementById('sim-area'),
+    code: document.getElementById('code-panel'),
+  };
+  var tabs = {
+    task: document.getElementById('tab-task'),
+    sim:  document.getElementById('tab-sim'),
+    code: document.getElementById('tab-code'),
+  };
+  Object.keys(panels).forEach(function(k) {
+    panels[k].classList.toggle('mob-active', k === tab);
+    tabs[k].classList.toggle('active', k === tab);
+  });
+}
+
+// На мобильном показываем первую вкладку по умолчанию
+if (window.innerWidth <= 768) {
+  switchTab('task');
+}
+</script>
+</body>
+</html>
